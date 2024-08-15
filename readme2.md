@@ -41,6 +41,5 @@ Measuring the code
 
 fab -f 3-deploy_web_static.py deploy
 ubuntu
-versions/web_static_202481501729.tgz
 
-fab -f 2-do_deploy_web_static.py do_deploy:archive_path=versions/web_static_20170315003959.tgz
+versions/web_static_20240814195431.tgz
