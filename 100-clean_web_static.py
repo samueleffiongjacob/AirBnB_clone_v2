@@ -1,51 +1,28 @@
-#!/usr/bin/env python3
-from fabric import task, Connection
-from fabric import Serial
+#!/usr/bin/python3
+# Fabfile to delete out-of-date archives.
 import os
-from pathlib import Path
+from fabric.api import *
 
-# Define the list of web servers
-WEB_SERVERS = ['3.85.141.200', '54.236.190.52']
+env.hosts = ["104.196.168.90", "35.196.46.172"]
+
 
 def do_clean(number=0):
+    """Delete out-of-date archives.
+    Args:
+        number (int): The number of archives to keep.
+    If number is 0 or 1, keeps only the most recent archive. If
+    number is 2, keeps the most and second-most recent archives,
+    etc.
     """
-    Deletes out-of-date archives.
-    """
-    # Convert number to integer
-    try:
-        number = int(number)
-    except ValueError:
-        number = 1  # Default to 1 if conversion fails
+    number = 1 if int(number) == 0 else int(number)
 
-    # Number of archives to keep
-    if number < 1:
-        number = 1
+    archives = sorted(os.listdir("versions"))
+    [archives.pop() for i in range(number)]
+    with lcd("versions"):
+        [local("rm ./{}".format(a)) for a in archives]
 
-    # Local cleanup
-    local_versions_dir = "versions"
-    if os.path.exists(local_versions_dir):
-        archives = sorted(Path(local_versions_dir).glob('web_static_*.tgz'), key=os.path.getmtime)
-        archives_to_delete = archives[:-number]
-
-        for archive in archives_to_delete:
-            print(f"Deleting local archive: {archive}")
-            os.remove(archive)
-
-    # Remote cleanup
-    for server in WEB_SERVERS:
-        conn = Connection(host=server, connect_kwargs={"key_filename": "~/.ssh/id_rsa", "username": "ubuntu"})
-        # List archives in the remote release directory
-        result = conn.run("ls -tr /data/web_static/releases/web_static_*.tgz", hide=True)
-        archives = result.stdout.split()
-        archives_to_delete = archives[:-number]
-
-        for archive in archives_to_delete:
-            print(f"Deleting remote archive: {archive} on {server}")
-            conn.run(f"rm {archive}")
-
-@task
-def clean(ctx, number=0):
-    """
-    Task to call do_clean with the number of archives to keep.
-    """
-    do_clean(number)
+    with cd("/data/web_static/releases"):
+        archives = run("ls -tr").split()
+        archives = [a for a in archives if "web_static_" in a]
+        [archives.pop() for i in range(number)]
+        [run("rm -rf ./{}".format(a)) for a in archives]
