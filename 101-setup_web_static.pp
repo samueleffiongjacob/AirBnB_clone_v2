@@ -56,7 +56,7 @@ file { '/data/web_static/current':
   target => '/data/web_static/releases/test'
 } ->
 
-exec { 'chown -R ubuntu:ubuntu /data/':
+exec { 'chown -R ubuntu /data/':
   path => '/usr/bin/:/usr/local/bin/:/bin/'
 }
 
