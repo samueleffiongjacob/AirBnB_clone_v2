@@ -1,57 +1,42 @@
 #!/usr/bin/env python3
-from fabric import task, Connection
+from fabric import task
 import os
 
 @task
 def do_deploy(ctx, archive_path):
-    """
-    Distributes an archive to the current server and deploys it.
-    """
     if not os.path.exists(archive_path):
         print("Archive file does not exist.")
         return False
 
-    # Extract the filename without the extension
     filename = os.path.basename(archive_path)
     filename_no_ext = filename.split('.')[0]
-    
-    # Path for the temporary and release directories
     tmp_path = f"/tmp/{filename}"
     release_path = f"/data/web_static/releases/{filename_no_ext}/"
     
     try:
-        # Establish a connection to localhost
-        conn = Connection(host="localhost")
+        conn = ctx.connection
 
-        # Upload the archive to /tmp/
         print(f"Uploading {archive_path} to localhost...")
         conn.put(archive_path, tmp_path)
 
-        # Create the release directory
         print(f"Creating directory {release_path} on localhost...")
         conn.run(f"mkdir -p {release_path}")
 
-        # Uncompress the archive
         print(f"Extracting {tmp_path} to {release_path} on localhost...")
         conn.run(f"tar -xzf {tmp_path} -C {release_path}")
 
-        # Remove the archive from the server
         print(f"Removing archive {tmp_path} from localhost...")
         conn.run(f"rm {tmp_path}")
 
-        # Move the files from web_static to the release directory
         print(f"Moving files from web_static to {release_path} on localhost...")
         conn.run(f"mv {release_path}web_static/* {release_path}")
 
-        # Remove the web_static folder
         print(f"Removing {release_path}web_static on localhost...")
         conn.run(f"rm -rf {release_path}web_static")
 
-        # Remove the current symbolic link
         print(f"Removing current symlink on localhost...")
         conn.run(f"rm -rf /data/web_static/current")
 
-        # Create a new symbolic link
         print(f"Creating new symlink on localhost...")
         conn.run(f"ln -s {release_path} /data/web_static/current")
 
