@@ -4,7 +4,6 @@ from datetime import datetime
 from fabric import task
 from invoke import run
 
-
 @task
 def do_pack(c):
     """Archives the static files."""
@@ -23,7 +22,7 @@ def do_pack(c):
     
     try:
         print("Packing web_static to {}".format(output))
-        run(f"tar -cvzf {output} web_static")
+        run(f"tar -cvzf {output} web_static", hide=True)  # Hide output if desired
         size = os.stat(output).st_size
         print("web_static packed: {} -> {} Bytes".format(output, size))
     except Exception as e:
