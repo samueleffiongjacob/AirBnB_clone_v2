@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-from fabric.api import env, run, local, task
+from fabric import task, Connection
+from fabric import Serial
 import os
 from pathlib import Path
 
 # Define the list of web servers
-env.hosts = ['3.85.141.200', '54.236.190.52']
-env.user = 'ubuntu'
-env.key_filename = '~/.ssh/id_rsa'
+WEB_SERVERS = ['3.85.141.200', '54.236.190.52']
 
 def do_clean(number=0):
     """
@@ -33,19 +32,19 @@ def do_clean(number=0):
             os.remove(archive)
 
     # Remote cleanup
-    for server in env.hosts:
-        with env.host_string(server):
-            # List archives in the remote release directory
-            result = run("ls -tr /data/web_static/releases/web_static_*.tgz")
-            archives = result.split()
-            archives_to_delete = archives[:-number]
+    for server in WEB_SERVERS:
+        conn = Connection(host=server, connect_kwargs={"key_filename": "~/.ssh/id_rsa", "username": "ubuntu"})
+        # List archives in the remote release directory
+        result = conn.run("ls -tr /data/web_static/releases/web_static_*.tgz", hide=True)
+        archives = result.stdout.split()
+        archives_to_delete = archives[:-number]
 
-            for archive in archives_to_delete:
-                print(f"Deleting remote archive: {archive} on {server}")
-                run(f"rm {archive}")
+        for archive in archives_to_delete:
+            print(f"Deleting remote archive: {archive} on {server}")
+            conn.run(f"rm {archive}")
 
 @task
-def clean(number=0):
+def clean(ctx, number=0):
     """
     Task to call do_clean with the number of archives to keep.
     """
