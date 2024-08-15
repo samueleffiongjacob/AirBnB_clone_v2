@@ -38,3 +38,9 @@ Measuring the code
   [ngix config](https://digital.ai/catalyst-blog/walk-before-you-run-understanding-ci-in-cd/)
 
 [Fabric docs](https://www.fabfile.org/)
+
+fab -f 3-deploy_web_static.py deploy
+ubuntu
+versions/web_static_202481501729.tgz
+
+fab -f 2-do_deploy_web_static.py do_deploy:archive_path=versions/web_static_20170315003959.tgz
