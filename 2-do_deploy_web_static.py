@@ -1,56 +1,52 @@
-#!/usr/bin/env python3
-from fabric.api import env, run, put
+#!/usr/bin/python3
+"""
+Fabric script that distributes an archive to your web servers
+"""
+
+from datetime import datetime
+from fabric.api import *
 import os
 
-# Define the list of web servers
-env.hosts = ['3.85.141.200', '54.236.190.52']
-env.user = 'ubuntu'
-env.key_filename = '~/.ssh/id_rsa'
+env.hosts = ["52.91.121.146", "3.85.136.181"]
+env.user = "ubuntu"
+
+
+def do_pack():
+    """
+        return the archive path if archive has generated correctly.
+    """
+
+    local("mkdir -p versions")
+    date = datetime.now().strftime("%Y%m%d%H%M%S")
+    archived_f_path = "versions/web_static_{}.tgz".format(date)
+    t_gzip_archive = local("tar -cvzf {} web_static".format(archived_f_path))
+
+    if t_gzip_archive.succeeded:
+        return archived_f_path
+    else:
+        return None
+
 
 def do_deploy(archive_path):
     """
-    Distributes an archive to web servers and deploys it.
+        Distribute archive.
     """
-    if not os.path.exists(archive_path):
-        print("Archive file does not exist.")
-        return False
+    if os.path.exists(archive_path):
+        archived_file = archive_path[9:]
+        newest_version = "/data/web_static/releases/" + archived_file[:-4]
+        archived_file = "/tmp/" + archived_file
+        put(archive_path, "/tmp/")
+        run("sudo mkdir -p {}".format(newest_version))
+        run("sudo tar -xzf {} -C {}/".format(archived_file,
+                                             newest_version))
+        run("sudo rm {}".format(archived_file))
+        run("sudo mv {}/web_static/* {}".format(newest_version,
+                                                newest_version))
+        run("sudo rm -rf {}/web_static".format(newest_version))
+        run("sudo rm -rf /data/web_static/current")
+        run("sudo ln -s {} /data/web_static/current".format(newest_version))
 
-    # Extract the filename without the extension
-    filename = os.path.basename(archive_path)
-    filename_no_ext = filename.split('.')[0]
-    
-    # Path for the temporary and release directories
-    tmp_path = f"/tmp/{filename}"
-    release_path = f"/data/web_static/releases/{filename_no_ext}/"
-    
-    try:
-        # Upload the archive to /tmp/
-        put(archive_path, tmp_path)
-
-        # Create the release directory
-        run(f"mkdir -p {release_path}")
-
-        # Uncompress the archive
-        run(f"tar -xzf {tmp_path} -C {release_path}")
-
-        # Remove the archive from the server
-        run(f"rm {tmp_path}")
-
-        # Move the files from web_static to the release directory
-        run(f"mv {release_path}web_static/* {release_path}")
-
-        # Remove the web_static folder
-        run(f"rm -rf {release_path}web_static")
-
-        # Remove the current symbolic link
-        run(f"rm -rf /data/web_static/current")
-
-        # Create a new symbolic link
-        run(f"ln -s {release_path} /data/web_static/current")
-
-        print("Deployment completed.")
+        print("New version deployed!")
         return True
 
-    except Exception as e:
-        print(f"Deployment failed: {e}")
-        return False
+    return False
