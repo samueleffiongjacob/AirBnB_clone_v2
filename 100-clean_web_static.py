@@ -12,6 +12,12 @@ def do_clean(number=0):
     """
     Deletes out-of-date archives.
     """
+    # Convert number to integer
+    try:
+        number = int(number)
+    except ValueError:
+        number = 1  # Default to 1 if conversion fails
+
     # Number of archives to keep
     if number < 1:
         number = 1
