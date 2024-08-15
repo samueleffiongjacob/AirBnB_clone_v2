@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-from fabric import task
+from fabric.api import env, local, run, put, task
 from datetime import datetime
 import os
-from fabric import Connection
 
 # Define the list of web servers
-WEB_SERVERS = ['<IP web-01>', '<IP web-02>']
+env.hosts = ['3.85.141.200', '54.236.190.52']
+env.user = 'ubuntu'
+env.key_filename = '~/.ssh/id_rsa'
 
 def do_pack():
     """
     Creates an archive of the web_static directory.
     Returns the path of the created archive or None if the archive creation fails.
     """
-    local("mkdir -p versions")
+    if not os.path.exists("versions"):
+        os.makedirs("versions")
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     archive_path = f"versions/web_static_{timestamp}.tgz"
     
@@ -27,7 +29,7 @@ def do_pack():
     return archive_path
 
 @task
-def do_deploy(ctx, archive_path):
+def do_deploy(archive_path):
     """
     Distributes an archive to web servers and deploys it.
     """
@@ -44,44 +46,31 @@ def do_deploy(ctx, archive_path):
     release_path = f"/data/web_static/releases/{filename_no_ext}/"
     
     try:
-        for server in WEB_SERVERS:
-            # Establish a connection
-            conn = Connection(host=server)
+        # Upload the archive to /tmp/
+        put(archive_path, tmp_path)
 
-            # Upload the archive to /tmp/
-            print(f"Uploading {archive_path} to {server}...")
-            conn.put(archive_path, tmp_path)
+        # Create the release directory
+        run(f"mkdir -p {release_path}")
 
-            # Create the release directory
-            print(f"Creating directory {release_path} on {server}...")
-            conn.run(f"mkdir -p {release_path}")
+        # Uncompress the archive
+        run(f"tar -xzf {tmp_path} -C {release_path}")
 
-            # Uncompress the archive
-            print(f"Extracting {tmp_path} to {release_path} on {server}...")
-            conn.run(f"tar -xzf {tmp_path} -C {release_path}")
+        # Remove the archive from the server
+        run(f"rm {tmp_path}")
 
-            # Remove the archive from the server
-            print(f"Removing archive {tmp_path} from {server}...")
-            conn.run(f"rm {tmp_path}")
+        # Move the files from web_static to the release directory
+        run(f"mv {release_path}web_static/* {release_path}")
 
-            # Move the files from web_static to the release directory
-            print(f"Moving files from web_static to {release_path} on {server}...")
-            conn.run(f"mv {release_path}web_static/* {release_path}")
+        # Remove the web_static folder
+        run(f"rm -rf {release_path}web_static")
 
-            # Remove the web_static folder
-            print(f"Removing {release_path}web_static on {server}...")
-            conn.run(f"rm -rf {release_path}web_static")
+        # Remove the current symbolic link
+        run(f"rm -rf /data/web_static/current")
 
-            # Remove the current symbolic link
-            print(f"Removing current symlink on {server}...")
-            conn.run(f"rm -rf /data/web_static/current")
+        # Create a new symbolic link
+        run(f"ln -s {release_path} /data/web_static/current")
 
-            # Create a new symbolic link
-            print(f"Creating new symlink on {server}...")
-            conn.run(f"ln -s {release_path} /data/web_static/current")
-
-            print(f"Deployment on {server} completed.")
-
+        print("Deployment completed.")
         return True
 
     except Exception as e:
@@ -89,11 +78,11 @@ def do_deploy(ctx, archive_path):
         return False
 
 @task
-def deploy(ctx):
+def deploy():
     """
     Creates and distributes an archive to web servers.
     """
     archive_path = do_pack()
     if not archive_path:
         return False
-    return do_deploy(ctx, archive_path)
+    return do_deploy(archive_path)
