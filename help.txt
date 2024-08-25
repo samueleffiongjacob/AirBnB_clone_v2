@@ -1,3 +1,8 @@
 step 
 1. install everything of server
 install_fabric.sh
+
+my base clase id: 667999b1-6287-4989-bc76-b1326c20a0da
+
+
+echo "SHOW DATABASES;" | docker exec -i mysql_docker mysql -uhbnb_dev -p'hbnb_dev_pwd' | grep hbnb_dev_db

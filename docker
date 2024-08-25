@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Run MySQL container
+docker run --name alx_docker \
+           -e MYSQL_ROOT_PASSWORD=dfmnd15dsr \
+           -d mysql/mysql-server:latest
+
+# Wait for MySQL to start up
+echo "Waiting for MySQL to start..."
+sleep 30 # Adjust the sleep time if needed
+
+# Run your application container
+docker run --name your_app_container \
+           --link alx_docker:mysql \
+           -e HBNB_TYPE_STORAGE=db \
+           -e HBNB_MYSQL_USER=hbnb_dev \
+           -e HBNB_MYSQL_PWD=hbnb_dev_pwd \
+           -e HBNB_MYSQL_HOST=alx_docker \
+           -e HBNB_MYSQL_DB=hbnb_dev_db \
+           mysql
